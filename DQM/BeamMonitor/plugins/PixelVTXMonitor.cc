@@ -41,7 +41,9 @@ PixelVTXMonitor::~PixelVTXMonitor() {
 
 }
 
-void PixelVTXMonitor::bookHistograms() {
+//void PixelVTXMonitor::bookHistograms() {
+void PixelVTXMonitor::bookHistograms(DQMStore::IBooker & ibooker,  edm::Run const & iRun,  edm::EventSetup const &){
+
   std::vector<std::string> hltPathsOfInterest = parameters_.getParameter<std::vector<std::string> > ("HLTPathsOfInterest");
   if (hltPathsOfInterest.size()  == 0) return;
 
@@ -63,7 +65,7 @@ void PixelVTXMonitor::bookHistograms() {
 
 
   std::string currentFolder = moduleName_ + "/" + folderName_ ;
-  dbe_->setCurrentFolder(currentFolder.c_str());
+  ibooker.setCurrentFolder(currentFolder.c_str());
 
   PixelMEs local_MEs;
   for (std::vector<std::string> ::iterator it = selectedPaths.begin();
@@ -78,7 +80,7 @@ void PixelVTXMonitor::bookHistograms() {
       hname += tag;
       htitle= "# of Pixel Clusters (";
       htitle += tag +")";
-      local_MEs.clusME= dbe_->book1D(hname, htitle,
+      local_MEs.clusME= ibooker.book1D(hname, htitle,
         ClusHistoPar.getParameter<int32_t>("Xbins"),
         ClusHistoPar.getParameter<double>("Xmin"),
         ClusHistoPar.getParameter<double>("Xmax"));
@@ -87,22 +89,22 @@ void PixelVTXMonitor::bookHistograms() {
       hname += tag;
       htitle= "# of Pixel Vertices (";
       htitle += tag +")";
-      local_MEs.vtxME= dbe_->book1D(hname, htitle,
+      local_MEs.vtxME= ibooker.book1D(hname, htitle,
          VtxHistoPar.getParameter<int32_t>("Xbins"),
          VtxHistoPar.getParameter<double>("Xmin"),
          VtxHistoPar.getParameter<double>("Xmax"));
 
       histoMap_.insert(std::make_pair(tag, local_MEs));
     }
-  }
+  } //for loop for selectedPaths
 }
 
 void PixelVTXMonitor::beginJob() {
-  dbe_ = edm::Service<DQMStore>().operator->();
+  //dbe_ = edm::Service<DQMStore>().operator->();
 
 }
 
-void PixelVTXMonitor::beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup) {
+void PixelVTXMonitor::dqmBeginRun(const edm::Run & iRun, const edm::EventSetup & iSetup) {
   bool changed = true;
   if (hltConfig_.init(iRun, iSetup, hltInputTag_.process(), changed)) {
     // if init returns TRUE, initialisation has succeeded!
@@ -115,9 +117,11 @@ void PixelVTXMonitor::beginRun(edm::Run const& iRun, edm::EventSetup const& iSet
                                   <<hltInputTag_.process() << " failed";
     // In this case, all access methods will return empty values!
   }
-  bookHistograms();
+  
+   //bookHistograms();  //(Not needed once have bookHistgrams(DQMStore::IBooker & ibooker) )
 
 }
+
 void PixelVTXMonitor::analyze(edm::Event const& iEvent, edm::EventSetup const& iSetup)  {
   if (!histoMap_.size()) return;
 

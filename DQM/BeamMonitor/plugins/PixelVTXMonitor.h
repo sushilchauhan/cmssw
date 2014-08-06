@@ -18,6 +18,7 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/MonitorElement.h"
+#include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 #include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -28,7 +29,7 @@
 // class declaration
 //
 
-class PixelVTXMonitor : public edm::EDAnalyzer {
+class PixelVTXMonitor : public DQMEDAnalyzer {
 public:
   PixelVTXMonitor( const edm::ParameterSet& );
   ~PixelVTXMonitor();
@@ -36,7 +37,8 @@ public:
 protected:
 
   void beginJob();
-  void beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup);
+  void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
+  void dqmBeginRun(const edm::Run & iRun, const edm::EventSetup & iSetup);
   void analyze(edm::Event const& iEvent, edm::EventSetup const& iSetup);
   void endRun(edm::Run const& iRun,  edm::EventSetup const& iSetup);
   void endJob();

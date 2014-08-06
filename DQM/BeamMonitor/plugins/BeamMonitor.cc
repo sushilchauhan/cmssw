@@ -48,10 +48,7 @@ const char * BeamMonitor::formatFitTime( const time_t & t )  {
   tm * ptm;
   ptm = gmtime ( &t );
   int year = ptm->tm_year;
-  if (year < 1995) {
-    edm::LogError("BadTimeStamp") << "year reported is " << year << "!! resetting to 2011..." << std::endl;
-    year = 2012;
-  }
+
   sprintf( ts, "%4d-%02d-%02d %02d:%02d:%02d", year,ptm->tm_mon+1,ptm->tm_mday,(ptm->tm_hour+CEST)%24, ptm->tm_min, ptm->tm_sec);
 
 #ifdef STRIP_TRAILING_BLANKS_IN_TIMEZONE
@@ -96,8 +93,21 @@ BeamMonitor::BeamMonitor( const ParameterSet& ps ) :
   minVtxNdf_      = parameters_.getParameter<ParameterSet>("PVFitter").getUntrackedParameter<double>("minVertexNdf");
   minVtxWgt_      = parameters_.getParameter<ParameterSet>("PVFitter").getUntrackedParameter<double>("minVertexMeanWeight");
 
-  dbe_            = Service<DQMStore>().operator->();
+  //binning for histo
+  dxBin_   = parameters_.getParameter<int>("dxBin");
+  dxMin_   = parameters_.getParameter<double>("dxMin");
+  dxMax_   = parameters_.getParameter<double>("dxMax");
+  vxBin_   = parameters_.getParameter<int>("vxBin");
+  vxMin_   = parameters_.getParameter<double>("vxMin");
+  vxMax_   = parameters_.getParameter<double>("vxMax");
+  phiBin_  = parameters_.getParameter<int>("phiBin");
+  phiMin_  = parameters_.getParameter<double>("phiMin");
+  phiMax_  = parameters_.getParameter<double>("phiMax");
+  dzBin_  = parameters_.getParameter<int>("dzBin");
+  dzMin_  = parameters_.getParameter<double>("dzMin");
+  dzMax_  = parameters_.getParameter<double>("dzMax");
 
+  dbe_            = Service<DQMStore>().operator->();
   if (monitorName_ != "" ) monitorName_ = monitorName_+"/" ;
 
   theBeamFitter = new BeamFitter(parameters_, consumesCollector());
@@ -115,59 +125,47 @@ BeamMonitor::BeamMonitor( const ParameterSet& ps ) :
   processed_ = false;
 }
 
-
+//destructor
 BeamMonitor::~BeamMonitor() {
   delete theBeamFitter;
 }
 
 
-//--------------------------------------------------------
+//-------------------beginJob()----------------------------//moved to bookedHistograms
 void BeamMonitor::beginJob() {
 
+}
 
-  // book some histograms here
-  const int    dxBin = parameters_.getParameter<int>("dxBin");
-  const double dxMin  = parameters_.getParameter<double>("dxMin");
-  const double dxMax  = parameters_.getParameter<double>("dxMax");
+//-------booking of histogram----------------------------
+void BeamMonitor::bookHistograms(DQMStore::IBooker & ibooker,  edm::Run const & iRun,  edm::EventSetup const &){
 
-  const int    vxBin = parameters_.getParameter<int>("vxBin");
-  const double vxMin  = parameters_.getParameter<double>("vxMin");
-  const double vxMax  = parameters_.getParameter<double>("vxMax");
-
-  const int    phiBin = parameters_.getParameter<int>("phiBin");
-  const double phiMin  = parameters_.getParameter<double>("phiMin");
-  const double phiMax  = parameters_.getParameter<double>("phiMax");
-
-  const int    dzBin = parameters_.getParameter<int>("dzBin");
-  const double dzMin  = parameters_.getParameter<double>("dzMin");
-  const double dzMax  = parameters_.getParameter<double>("dzMax");
 
   // create and cd into new folder
-  dbe_->setCurrentFolder(monitorName_+"Fit");
+  ibooker.setCurrentFolder(monitorName_+"Fit");
 
-  h_nTrk_lumi=dbe_->book1D("nTrk_lumi","Num. of selected tracks vs lumi",20,0.5,20.5);
+  h_nTrk_lumi=ibooker.book1D("nTrk_lumi","Num. of selected tracks vs lumi",20,0.5,20.5);
   h_nTrk_lumi->setAxisTitle("Lumisection",1);
   h_nTrk_lumi->setAxisTitle("Num of Tracks",2);
 
-  h_d0_phi0 = dbe_->bookProfile("d0_phi0","d_{0} vs. #phi_{0} (Selected Tracks)",phiBin,phiMin,phiMax,dxBin,dxMin,dxMax,"");
+  h_d0_phi0 = ibooker.bookProfile("d0_phi0","d_{0} vs. #phi_{0} (Selected Tracks)",phiBin_,phiMin_,phiMax_,dxBin_,dxMin_,dxMax_,"");
   h_d0_phi0->setAxisTitle("#phi_{0} (rad)",1);
   h_d0_phi0->setAxisTitle("d_{0} (cm)",2);
 
-  h_vx_vy = dbe_->book2D("trk_vx_vy","Vertex (PCA) position of selected tracks",vxBin,vxMin,vxMax,vxBin,vxMin,vxMax);
+  h_vx_vy = ibooker.book2D("trk_vx_vy","Vertex (PCA) position of selected tracks",vxBin_,vxMin_,vxMax_,vxBin_,vxMin_,vxMax_);
   h_vx_vy->getTH2F()->SetOption("COLZ");
   //   h_vx_vy->getTH1()->SetBit(TH1::kCanRebin);
   h_vx_vy->setAxisTitle("x coordinate of input track at PCA (cm)",1);
   h_vx_vy->setAxisTitle("y coordinate of input track at PCA (cm)",2);
 
-  TDatime *da = new TDatime();
-  gStyle->SetTimeOffset(da->Convert(kTRUE));
+  TDatime *da1 = new TDatime();
+  gStyle->SetTimeOffset(da1->Convert(kTRUE));
 
   const int nvar_ = 6;
   string coord[nvar_] = {"x","y","z","sigmaX","sigmaY","sigmaZ"};
   string label[nvar_] = {"x_{0} (cm)","y_{0} (cm)","z_{0} (cm)",
 			 "#sigma_{X_{0}} (cm)","#sigma_{Y_{0}} (cm)","#sigma_{Z_{0}} (cm)"};
   for (int i = 0; i < 4; i++) {
-    dbe_->setCurrentFolder(monitorName_+"Fit");
+    ibooker.setCurrentFolder(monitorName_+"Fit");
     for (int ic=0; ic<nvar_; ++ic) {
       TString histName(coord[ic]);
       TString histTitle(coord[ic]);
@@ -186,7 +184,7 @@ void BeamMonitor::beginJob() {
 	break;
       case 2: // PV vs lumi
 	if (ic < 3) {
-	  dbe_->setCurrentFolder(monitorName_+"PrimaryVertex");
+	  ibooker.setCurrentFolder(monitorName_+"PrimaryVertex");
 	  histName.Insert(0,"PV");
 	  histName += "_lumi";
 	  histTitle.Insert(0,"Avg. ");
@@ -201,7 +199,7 @@ void BeamMonitor::beginJob() {
 	break;
       case 3: // PV vs time
 	if (ic < 3) {
-	  dbe_->setCurrentFolder(monitorName_+"PrimaryVertex");
+	  ibooker.setCurrentFolder(monitorName_+"PrimaryVertex");
 	  histName.Insert(0,"PV");
 	  histName += "_time";
 	  histTitle.Insert(0,"Avg. ");
@@ -225,7 +223,7 @@ void BeamMonitor::beginJob() {
       }
       if (createHisto) {
 	edm::LogInfo("BeamMonitor") << "hitsName = " << histName << "; histTitle = " << histTitle << std::endl;
-	hs[histName] = dbe_->book1D(histName,histTitle,40,0.5,40.5);
+	hs[histName] = ibooker.book1D(histName,histTitle,40,0.5,40.5);
 	hs[histName]->setAxisTitle(xtitle,1);
 	hs[histName]->setAxisTitle(ytitle,2);
 	hs[histName]->getTH1()->SetOption("E1");
@@ -237,7 +235,7 @@ void BeamMonitor::beginJob() {
 	}
 	histName += "_all";
 	histTitle += " all";
-	hs[histName] = dbe_->book1D(histName,histTitle,40,0.5,40.5);
+	hs[histName] = ibooker.book1D(histName,histTitle,40,0.5,40.5);
 	hs[histName]->getTH1()->SetBit(TH1::kCanRebin);
 	hs[histName]->setAxisTitle(xtitle,1);
 	hs[histName]->setAxisTitle(ytitle,2);
@@ -251,54 +249,55 @@ void BeamMonitor::beginJob() {
       }
     }
   }
-  dbe_->setCurrentFolder(monitorName_+"Fit");
 
-  h_trk_z0 = dbe_->book1D("trk_z0","z_{0} of selected tracks",dzBin,dzMin,dzMax);
+  ibooker.setCurrentFolder(monitorName_+"Fit");
+
+  h_trk_z0 = ibooker.book1D("trk_z0","z_{0} of selected tracks",dzBin_,dzMin_,dzMax_);
   h_trk_z0->setAxisTitle("z_{0} of selected tracks (cm)",1);
 
-  h_vx_dz = dbe_->bookProfile("vx_dz","v_{x} vs. dz of selected tracks",dzBin,dzMin,dzMax,dxBin,dxMin,dxMax,"");
+  h_vx_dz = ibooker.bookProfile("vx_dz","v_{x} vs. dz of selected tracks",dzBin_,dzMin_,dzMax_,dxBin_,dxMin_,dxMax_,"");
   h_vx_dz->setAxisTitle("dz (cm)",1);
   h_vx_dz->setAxisTitle("x coordinate of input track at PCA (cm)",2);
 
-  h_vy_dz = dbe_->bookProfile("vy_dz","v_{y} vs. dz of selected tracks",dzBin,dzMin,dzMax,dxBin,dxMin,dxMax,"");
+  h_vy_dz = ibooker.bookProfile("vy_dz","v_{y} vs. dz of selected tracks",dzBin_,dzMin_,dzMax_,dxBin_,dxMin_,dxMax_,"");
   h_vy_dz->setAxisTitle("dz (cm)",1);
   h_vy_dz->setAxisTitle("x coordinate of input track at PCA (cm)",2);
 
-  h_x0 = dbe_->book1D("BeamMonitorFeedBack_x0","x coordinate of beam spot (Fit)",100,-0.01,0.01);
+  h_x0 = ibooker.book1D("BeamMonitorFeedBack_x0","x coordinate of beam spot (Fit)",100,-0.01,0.01);
   h_x0->setAxisTitle("x_{0} (cm)",1);
   h_x0->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_y0 = dbe_->book1D("BeamMonitorFeedBack_y0","y coordinate of beam spot (Fit)",100,-0.01,0.01);
+  h_y0 = ibooker.book1D("BeamMonitorFeedBack_y0","y coordinate of beam spot (Fit)",100,-0.01,0.01);
   h_y0->setAxisTitle("y_{0} (cm)",1);
   h_y0->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_z0 = dbe_->book1D("BeamMonitorFeedBack_z0","z coordinate of beam spot (Fit)",dzBin,dzMin,dzMax);
+  h_z0 = ibooker.book1D("BeamMonitorFeedBack_z0","z coordinate of beam spot (Fit)",dzBin_,dzMin_,dzMax_);
   h_z0->setAxisTitle("z_{0} (cm)",1);
   h_z0->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_sigmaX0 = dbe_->book1D("BeamMonitorFeedBack_sigmaX0","sigma x0 of beam spot (Fit)",100,0,0.05);
+  h_sigmaX0 = ibooker.book1D("BeamMonitorFeedBack_sigmaX0","sigma x0 of beam spot (Fit)",100,0,0.05);
   h_sigmaX0->setAxisTitle("#sigma_{X_{0}} (cm)",1);
   h_sigmaX0->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_sigmaY0 = dbe_->book1D("BeamMonitorFeedBack_sigmaY0","sigma y0 of beam spot (Fit)",100,0,0.05);
+  h_sigmaY0 = ibooker.book1D("BeamMonitorFeedBack_sigmaY0","sigma y0 of beam spot (Fit)",100,0,0.05);
   h_sigmaY0->setAxisTitle("#sigma_{Y_{0}} (cm)",1);
   h_sigmaY0->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_sigmaZ0 = dbe_->book1D("BeamMonitorFeedBack_sigmaZ0","sigma z0 of beam spot (Fit)",100,0,10);
+  h_sigmaZ0 = ibooker.book1D("BeamMonitorFeedBack_sigmaZ0","sigma z0 of beam spot (Fit)",100,0,10);
   h_sigmaZ0->setAxisTitle("#sigma_{Z_{0}} (cm)",1);
   h_sigmaZ0->getTH1()->SetBit(TH1::kCanRebin);
 
   // Histograms of all reco tracks (without cuts):
-  h_trkPt=dbe_->book1D("trkPt","p_{T} of all reco'd tracks (no selection)",200,0.,50.);
+  h_trkPt=ibooker.book1D("trkPt","p_{T} of all reco'd tracks (no selection)",200,0.,50.);
   h_trkPt->setAxisTitle("p_{T} (GeV/c)",1);
 
-  h_trkVz=dbe_->book1D("trkVz","Z coordinate of PCA of all reco'd tracks (no selection)",dzBin,dzMin,dzMax);
+  h_trkVz=ibooker.book1D("trkVz","Z coordinate of PCA of all reco'd tracks (no selection)",dzBin_,dzMin_,dzMax_);
   h_trkVz->setAxisTitle("V_{Z} (cm)",1);
 
-  cutFlowTable = dbe_->book1D("cutFlowTable","Cut flow table of track selection", 9, 0, 9 );
+  cutFlowTable = ibooker.book1D("cutFlowTable","Cut flow table of track selection", 9, 0, 9 );
 
   // Results of previous good fit:
-  fitResults=dbe_->book2D("fitResults","Results of previous good beam fit",2,0,2,8,0,8);
+  fitResults=ibooker.book2D("fitResults","Results of previous good beam fit",2,0,2,8,0,8);
   fitResults->setAxisTitle("Fitted Beam Spot (cm)",1);
   fitResults->setBinLabel(8,"x_{0}",2);
   fitResults->setBinLabel(7,"y_{0}",2);
@@ -313,48 +312,48 @@ void BeamMonitor::beginJob() {
   fitResults->getTH1()->SetOption("text");
 
   // Histos of PrimaryVertices:
-  dbe_->setCurrentFolder(monitorName_+"PrimaryVertex");
+  ibooker.setCurrentFolder(monitorName_+"PrimaryVertex");
 
-  h_nVtx = dbe_->book1D("vtxNbr","Reconstructed Vertices(non-fake) in all Event",60,-0.5,59.5);
+  h_nVtx = ibooker.book1D("vtxNbr","Reconstructed Vertices(non-fake) in all Event",60,-0.5,59.5);
   h_nVtx->setAxisTitle("Num. of reco. vertices",1);
   
   //For one Trigger only
-  h_nVtx_st = dbe_->book1D("vtxNbr_SelectedTriggers","Reconstructed Vertices(non-fake) in Events",60,-0.5,59.5);
+  h_nVtx_st = ibooker.book1D("vtxNbr_SelectedTriggers","Reconstructed Vertices(non-fake) in Events",60,-0.5,59.5);
   //h_nVtx_st->setAxisTitle("Num. of reco. vertices for Un-Prescaled Jet Trigger",1);
 
   // Monitor only the PV with highest sum pt of assoc. trks:
-  h_PVx[0] = dbe_->book1D("PVX","x coordinate of Primary Vtx",50,-0.01,0.01);
+  h_PVx[0] = ibooker.book1D("PVX","x coordinate of Primary Vtx",50,-0.01,0.01);
   h_PVx[0]->setAxisTitle("PVx (cm)",1);
   h_PVx[0]->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_PVy[0] = dbe_->book1D("PVY","y coordinate of Primary Vtx",50,-0.01,0.01);
+  h_PVy[0] = ibooker.book1D("PVY","y coordinate of Primary Vtx",50,-0.01,0.01);
   h_PVy[0]->setAxisTitle("PVy (cm)",1);
   h_PVy[0]->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_PVz[0] = dbe_->book1D("PVZ","z coordinate of Primary Vtx",dzBin,dzMin,dzMax);
+  h_PVz[0] = ibooker.book1D("PVZ","z coordinate of Primary Vtx",dzBin_,dzMin_,dzMax_);
   h_PVz[0]->setAxisTitle("PVz (cm)",1);
 
-  h_PVx[1] = dbe_->book1D("PVXFit","x coordinate of Primary Vtx (Last Fit)",50,-0.01,0.01);
+  h_PVx[1] = ibooker.book1D("PVXFit","x coordinate of Primary Vtx (Last Fit)",50,-0.01,0.01);
   h_PVx[1]->setAxisTitle("PVx (cm)",1);
   h_PVx[1]->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_PVy[1] = dbe_->book1D("PVYFit","y coordinate of Primary Vtx (Last Fit)",50,-0.01,0.01);
+  h_PVy[1] = ibooker.book1D("PVYFit","y coordinate of Primary Vtx (Last Fit)",50,-0.01,0.01);
   h_PVy[1]->setAxisTitle("PVy (cm)",1);
   h_PVy[1]->getTH1()->SetBit(TH1::kCanRebin);
 
-  h_PVz[1] = dbe_->book1D("PVZFit","z coordinate of Primary Vtx (Last Fit)",dzBin,dzMin,dzMax);
+  h_PVz[1] = ibooker.book1D("PVZFit","z coordinate of Primary Vtx (Last Fit)",dzBin_,dzMin_,dzMax_);
   h_PVz[1]->setAxisTitle("PVz (cm)",1);
 
-  h_PVxz = dbe_->bookProfile("PVxz","PVx vs. PVz",dzBin/2,dzMin,dzMax,dxBin/2,dxMin,dxMax,"");
+  h_PVxz = ibooker.bookProfile("PVxz","PVx vs. PVz",dzBin_/2,dzMin_,dzMax_,dxBin_/2,dxMin_,dxMax_,"");
   h_PVxz->setAxisTitle("PVz (cm)",1);
   h_PVxz->setAxisTitle("PVx (cm)",2);
 
-  h_PVyz = dbe_->bookProfile("PVyz","PVy vs. PVz",dzBin/2,dzMin,dzMax,dxBin/2,dxMin,dxMax,"");
+  h_PVyz = ibooker.bookProfile("PVyz","PVy vs. PVz",dzBin_/2,dzMin_,dzMax_,dxBin_/2,dxMin_,dxMax_,"");
   h_PVyz->setAxisTitle("PVz (cm)",1);
   h_PVyz->setAxisTitle("PVy (cm)",2);
 
-  // Results of previous good fit:
-  pvResults=dbe_->book2D("pvResults","Results of fitting Primary Vertices",2,0,2,6,0,6);
+  // Results of previous good fit in a table format:
+  pvResults=ibooker.book2D("pvResults","Results of fitting Primary Vertices",2,0,2,6,0,6);
   pvResults->setAxisTitle("Fitted Primary Vertex (cm)",1);
   pvResults->setBinLabel(6,"PVx",2);
   pvResults->setBinLabel(5,"PVy",2);
@@ -367,35 +366,39 @@ void BeamMonitor::beginJob() {
   pvResults->getTH1()->SetOption("text");
 
   // Summary plots:
-  dbe_->setCurrentFolder(monitorName_+"EventInfo");
-  reportSummary = dbe_->get(monitorName_+"EventInfo/reportSummary");
-  if (reportSummary) dbe_->removeElement(reportSummary->getName());
+  ibooker.setCurrentFolder(monitorName_+"EventInfo");
 
-  reportSummary = dbe_->bookFloat("reportSummary");
+  //FIXME Is it really needed?
+  //reportSummary = ibooker.get(monitorName_+"EventInfo/reportSummary"); //FIXME OR Remove
+  //if (reportSummary) ibooker.removeElement(reportSummary->getName());  //FIXME OR Remove
+
+  reportSummary = ibooker.bookFloat("reportSummary");
   if(reportSummary) reportSummary->Fill(std::numeric_limits<double>::quiet_NaN());
 
   char histo[20];
-  dbe_->setCurrentFolder(monitorName_+"EventInfo/reportSummaryContents");
+  ibooker.setCurrentFolder(monitorName_+"EventInfo/reportSummaryContents");
   for (int n = 0; n < nFitElements_; n++) {
     switch(n){
     case 0 : sprintf(histo,"x0_status"); break;
     case 1 : sprintf(histo,"y0_status"); break;
     case 2 : sprintf(histo,"z0_status"); break;
     }
-    reportSummaryContents[n] = dbe_->bookFloat(histo);
+    reportSummaryContents[n] = ibooker.bookFloat(histo);
   }
 
+  //set summary conent to zero or NAN
   for (int i = 0; i < nFitElements_; i++) {
     summaryContent_[i] = 0.;
     reportSummaryContents[i]->Fill(std::numeric_limits<double>::quiet_NaN());
   }
 
-  dbe_->setCurrentFolder(monitorName_+"EventInfo");
+  ibooker.setCurrentFolder(monitorName_+"EventInfo");
 
-  reportSummaryMap = dbe_->get(monitorName_+"EventInfo/reportSummaryMap");
-  if (reportSummaryMap) dbe_->removeElement(reportSummaryMap->getName());
+  //FIXME, Is it really needed?
+  //reportSummaryMap = ibooker.get(monitorName_+"EventInfo/reportSummaryMap"); //FIXME OR Remove
+  //if (reportSummaryMap) ibooker.removeElement(reportSummaryMap->getName());  //FIXME OR Remove
 
-  reportSummaryMap = dbe_->book2D("reportSummaryMap", "Beam Spot Summary Map", 1, 0, 1, 3, 0, 3);
+  reportSummaryMap = ibooker.book2D("reportSummaryMap", "Beam Spot Summary Map", 1, 0, 1, 3, 0, 3);
   reportSummaryMap->setAxisTitle("",1);
   reportSummaryMap->setAxisTitle("Fitted Beam Spot",2);
   reportSummaryMap->setBinLabel(1," ",1);
@@ -405,13 +408,28 @@ void BeamMonitor::beginJob() {
   for (int i = 0; i < nFitElements_; i++) {
     reportSummaryMap->setBinContent(1,i+1,-1.);
   }
+
+  //Earlier it was in beginRun but as dqmBeginRun executed before bookHistogram()  
+  ftimestamp = iRun.beginTime().value();
+  tmpTime = ftimestamp >> 32;
+  startTime = refTime =  tmpTime;
+  const char* eventTime = formatFitTime(tmpTime);
+  std::cout << "TimeOffset = " << eventTime << std::endl;
+  TDatime da(eventTime);
+  for (std::map<TString,MonitorElement*>::iterator it = hs.begin(); it != hs.end(); ++it) {
+    if ((*it).first.Contains("time"))
+      (*it).second->getTH1()->GetXaxis()->SetTimeOffset(da.Convert(kTRUE));
+    }
+  //--
+
 }
 
 //--------------------------------------------------------
-void BeamMonitor::beginRun(const edm::Run& r, const EventSetup& context) {
+void BeamMonitor::dqmBeginRun(const edm::Run& r, const EventSetup& context) {
 
   frun = r.run();
-  ftimestamp = r.beginTime().value();
+//Moved to bookHistogram as dqmBeginRun runs before bookHistograms()
+/*  ftimestamp = r.beginTime().value();
   tmpTime = ftimestamp >> 32;
   startTime = refTime =  tmpTime;
   const char* eventTime = formatFitTime(tmpTime);
@@ -426,9 +444,11 @@ void BeamMonitor::beginRun(const edm::Run& r, const EventSetup& context) {
     if ((*it).first.Contains("time"))
       (*it).second->getTH1()->GetXaxis()->SetTimeOffset(da.Convert(kTRUE));
   }
+ */
+
 }
 
-//--------------------------------------------------------
+//------------------------beginLumonisty-----------------------
 void BeamMonitor::beginLuminosityBlock(const LuminosityBlock& lumiSeg,
 				       const EventSetup& context) {
   int nthlumi = lumiSeg.luminosityBlock();
@@ -472,7 +492,7 @@ if(nthlumi > nextlumi_){
      if(debug_)edm::LogInfo("BeamMonitor") << " beginLuminosityBlock:  Size of mapBeginBSLS before =  "<< mapBeginBSLS.size()<<endl;
      if(nthlumi> nextlumi_){ //this make sure that it does not take into account this lumi for fitting and only look forward for new lumi
                              //as countLumi also remains the same so map value  get overwritten once return to normal running.
-     //even if few LS are misssing and DQM module do not sees them then it catchs up again
+                             //even if few LS are misssing and DQM module do not sees them then it catchs up again
      map<int, int>::iterator itbs=mapBeginBSLS.begin();
      map<int, int>::iterator itpv=mapBeginPVLS.begin();
      map<int, std::time_t>::iterator itbstime=mapBeginBSTime.begin();
@@ -538,9 +558,12 @@ if(nthlumi > nextlumi_){
   edm::LogInfo("BeamMonitor") << " beginLuminosityBlock::  Begin of Lumi: " << nthlumi << endl;
 }
 
-// ----------------------------------------------------------
-void BeamMonitor::analyze(const Event& iEvent,
-			  const EventSetup& iSetup ) {
+
+// -------------------------Analyzer---------------------------------
+void BeamMonitor::analyze( const Event& iEvent,
+ 			   const EventSetup& iSetup ) {
+
+
   const int nthlumi = iEvent.luminosityBlock();
   if (onlineMode_ && (nthlumi < nextlumi_)) {
     edm::LogInfo("BeamMonitor") << "analyze::  Spilt event from previous lumi section!" << std::endl;
@@ -552,19 +575,18 @@ void BeamMonitor::analyze(const Event& iEvent,
   }
 
   countEvt_++;
-  theBeamFitter->readEvent(iEvent); //Remember when track fitter read the event in the same place the PVFitter read the events !!!!!!!!!
+  theBeamFitter->readEvent(iEvent); //Remember when track fitter read the event at the same place the PVFitter read the events !!!!!!!!!
 
   Handle<reco::BeamSpot> recoBeamSpotHandle;
   iEvent.getByToken(bsSrc_,recoBeamSpotHandle);
   refBS = *recoBeamSpotHandle;
 
-  dbe_->setCurrentFolder(monitorName_+"Fit/");
+  //ibooker.setCurrentFolder(monitorName_+"Fit/"); //FIXME or Remove
 
   //------Cut Flow Table filled every event!--------------------------------------
-  std::string cutFlowTableName = cutFlowTable->getName();
+  //std::string cutFlowTableName = cutFlowTable->getName();
   // Make a copy of the cut flow table from the beam fitter.
-  TH1F * tmphisto =
-    static_cast<TH1F*>((theBeamFitter->getCutFlow())->Clone("tmphisto"));
+  TH1F * tmphisto = static_cast<TH1F*>((theBeamFitter->getCutFlow())->Clone("tmphisto"));
   cutFlowTable->getTH1()->SetBins(
       tmphisto->GetNbinsX(),
       tmphisto->GetXaxis()->GetXmin(),
@@ -573,7 +595,10 @@ void BeamMonitor::analyze(const Event& iEvent,
   if (countEvt_ == 1) // SetLabel just once
     for(int n=0; n < tmphisto->GetNbinsX(); n++)
       cutFlowTable->setBinLabel(n+1,tmphisto->GetXaxis()->GetBinLabel(n+1),1);
-  cutFlowTable = dbe_->book1D(cutFlowTableName, tmphisto);
+
+      //cutFlowTable = dbe_->book1D(cutFlowTableName, tmphisto);  //FIXME OR Remove
+      for(int n=0; n < tmphisto->GetNbinsX(); n++)
+       cutFlowTable->setBinContent(n,tmphisto->GetBinContent(n)); //fix for above line
 
   //----Reco tracks -------------------------------------
   Handle<reco::TrackCollection> TrackCollection;
@@ -671,7 +696,7 @@ void BeamMonitor::analyze(const Event& iEvent,
 
   }//StartAverage==true
 
-  processed_ = true;
+  processed_ = true; //This trigger Fitting procedure in next LS in beginLuminosityBlock()
 }
 
 
@@ -884,14 +909,15 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg,int &lastlumi,int &n
       pvResults->setBinContent(2,6,meanErr);
       pvResults->setBinContent(2,3,widthErr);
 
-      dbe_->setCurrentFolder(monitorName_+"PrimaryVertex/");
-      const char* tmpfile;
+      //dbe_->setCurrentFolder(monitorName_+"PrimaryVertex/"); //FIXME OR Remove
+      //const char* tmpfile;
       TH1D * tmphisto;
       // snap shot of the fit
-      tmpfile= (h_PVx[1]->getName()).c_str();
+      //tmpfile= (h_PVx[1]->getName()).c_str();
       tmphisto = static_cast<TH1D *>((h_PVx[0]->getTH1())->Clone("tmphisto"));
       h_PVx[1]->getTH1()->SetBins(tmphisto->GetNbinsX(),tmphisto->GetXaxis()->GetXmin(),tmphisto->GetXaxis()->GetXmax());
-      h_PVx[1] = dbe_->book1D(tmpfile,h_PVx[0]->getTH1F());
+      //h_PVx[1] = dbe_->book1D(tmpfile,h_PVx[0]->getTH1F());  //FIXME OR Remove
+      for(int n=0; n < tmphisto->GetNbinsX(); n++)h_PVx[1]->setBinContent(n,tmphisto->GetBinContent(n)); //fix for above line
       h_PVx[1]->getTH1()->Fit("fgaus","QLM");
 
 
@@ -916,11 +942,12 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg,int &lastlumi,int &n
       pvResults->setBinContent(2,5,meanErr);
       pvResults->setBinContent(2,2,widthErr);
       // snap shot of the fit
-      tmpfile= (h_PVy[1]->getName()).c_str();
+      //tmpfile= (h_PVy[1]->getName()).c_str();
       tmphisto = static_cast<TH1D *>((h_PVy[0]->getTH1())->Clone("tmphisto"));
       h_PVy[1]->getTH1()->SetBins(tmphisto->GetNbinsX(),tmphisto->GetXaxis()->GetXmin(),tmphisto->GetXaxis()->GetXmax());
       h_PVy[1]->update();
-      h_PVy[1] = dbe_->book1D(tmpfile,h_PVy[0]->getTH1F());
+     //h_PVy[1] = dbe_->book1D(tmpfile,h_PVy[0]->getTH1F()); //FIXME OR Remove
+     for(int n=0; n < tmphisto->GetNbinsX(); n++)h_PVy[1]->setBinContent(n,tmphisto->GetBinContent(n)); //fix for above line
       h_PVy[1]->getTH1()->Fit("fgaus","QLM");
 
 
@@ -945,11 +972,12 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg,int &lastlumi,int &n
       pvResults->setBinContent(2,4,meanErr);
       pvResults->setBinContent(2,1,widthErr);
       // snap shot of the fit
-      tmpfile= (h_PVz[1]->getName()).c_str();
+      //tmpfile= (h_PVz[1]->getName()).c_str();
       tmphisto = static_cast<TH1D *>((h_PVz[0]->getTH1())->Clone("tmphisto"));
       h_PVz[1]->getTH1()->SetBins(tmphisto->GetNbinsX(),tmphisto->GetXaxis()->GetXmin(),tmphisto->GetXaxis()->GetXmax());
       h_PVz[1]->update();
-      h_PVz[1] = dbe_->book1D(tmpfile,h_PVz[0]->getTH1F());
+      //h_PVz[1] = dbe_->book1D(tmpfile,h_PVz[0]->getTH1F()); //FIXME OR Romove
+      for(int n=0; n < tmphisto->GetNbinsX(); n++)h_PVz[1]->setBinContent(n,tmphisto->GetBinContent(n)); //fix for above line
       h_PVz[1]->getTH1()->Fit("fgaus","QLM");
 
     }//check if found min Vertices
@@ -1353,6 +1381,7 @@ void BeamMonitor::endJob(const LuminosityBlock& lumiSeg,
 			 const EventSetup& iSetup){
   if (!onlineMode_) endLuminosityBlock(lumiSeg, iSetup);
 }
+
 
 //--------------------------------------------------------
 void BeamMonitor::scrollTH1(TH1 * h, time_t ref) {

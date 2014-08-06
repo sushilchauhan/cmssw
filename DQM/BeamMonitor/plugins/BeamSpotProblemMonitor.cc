@@ -82,9 +82,12 @@ BeamSpotProblemMonitor::~BeamSpotProblemMonitor() {
 //--------------------------------------------------------
 void BeamSpotProblemMonitor::beginJob() {
 
+}
 
+//-------booking of histogram----------------------------
+void BeamSpotProblemMonitor::bookHistograms(DQMStore::IBooker & ibooker,  edm::Run const & iRun,  edm::EventSetup const &){
   // create and cd into new folder
-  dbe_->setCurrentFolder(monitorName_+"FitFromScalars");
+  ibooker.setCurrentFolder(monitorName_+"FitFromScalars");
 
   /* S.Dutta : Commenting out these variables are not used and giving error with "-Werror=unused-variable" option
   int nbins = alarmOFFThreshold_; 
@@ -96,7 +99,7 @@ void BeamSpotProblemMonitor::beginJob() {
   string label[nvar_] = {"BeamSpotStatus "};*/
 
   for (int i = 0; i < 1; i++) {
-    dbe_->setCurrentFolder(monitorName_+"FitFromScalars");
+    ibooker.setCurrentFolder(monitorName_+"FitFromScalars");
     for (int ic=0; ic<nvar_; ++ic) {
       TString histName(coord[ic]);
       TString histTitle(coord[ic]);
@@ -111,13 +114,13 @@ void BeamSpotProblemMonitor::beginJob() {
 	xtitle = "Lumisection";
 
       if (createHisto) {
-	hs[histName] = dbe_->book1D(histName,histTitle,40,0.5,40.5);
+	hs[histName] = ibooker.book1D(histName,histTitle,40,0.5,40.5);
 	hs[histName]->setAxisTitle(xtitle,1);
 	hs[histName]->setAxisTitle(ytitle,2);
 
         histName += "_all";
         histTitle += " all";
-        hs[histName] = dbe_->book1D(histName,histTitle,40,0.5,40.5);
+        hs[histName] = ibooker.book1D(histName,histTitle,40,0.5,40.5);
         hs[histName]->getTH1()->SetBit(TH1::kCanRebin);
         hs[histName]->setAxisTitle(xtitle,1);
         hs[histName]->setAxisTitle(ytitle,2);
@@ -127,19 +130,19 @@ void BeamSpotProblemMonitor::beginJob() {
     }
   }
 
-  BeamSpotError = dbe_->book1D("BeamSpotError","ERROR: Beamspot missing from scalars",20,0.5,20.5);
+  BeamSpotError = ibooker.book1D("BeamSpotError","ERROR: Beamspot missing from scalars",20,0.5,20.5);
   BeamSpotError->setAxisTitle("# of consecutive LSs with problem",1);
   BeamSpotError->setAxisTitle("Problem with scalar BeamSpot",2);
 
 
-  dbe_->setCurrentFolder(monitorName_+"FitFromScalars");
+  ibooker.setCurrentFolder(monitorName_+"FitFromScalars");
 
 
 
 }
 
 //--------------------------------------------------------
-void BeamSpotProblemMonitor::beginRun(const edm::Run& r, const EventSetup& context) {
+void BeamSpotProblemMonitor::dqmBeginRun(const edm::Run& r, const EventSetup& context) {
 
 
   if (debug_) {
@@ -267,7 +270,7 @@ void BeamSpotProblemMonitor::analyze(const Event& iEvent,
     if(AllTkOn && Ntracks_ < nCosmicTrk_)BeamSpotStatus_ = 0.;
       
 
-    dbe_->setCurrentFolder(monitorName_+"FitFromScalars/");
+    //dbe_->setCurrentFolder(monitorName_+"FitFromScalars/"); FIXME or Remove
 
 
   processed_ = true;
@@ -326,17 +329,14 @@ void BeamSpotProblemMonitor::FillPlots(const LuminosityBlock& lumiSeg,int &lastl
 
 
     //Get quality report
-     MonitorElement* myQReport = dbe_->get(monitorName_+"FitFromScalars/BeamSpotError");
-
-     const QReport * BeamSpotQReport = myQReport->getQReport("BeamSpotOnlineTest");  
-
-    if(BeamSpotQReport){  
+    //MonitorElement* myQReport = dbe_->get(monitorName_+"FitFromScalars/BeamSpotError");
+    // const QReport * BeamSpotQReport = myQReport->getQReport("BeamSpotOnlineTest");  
+    //if(BeamSpotQReport){  //Looks like we don't need as this is just a message?
     		          /* S.Dutta : Commenting out these variables are not used and giving error with "-Werror=unused-variable" option
     	                   float qtresult = BeamSpotQReport->getQTresult();
                            int qtstatus   = BeamSpotQReport->getStatus() ; // get QT status value (see table below) */
-               	           std::string qtmessage = BeamSpotQReport->getMessage() ; // get the whole QT result message
-                      }
-
+    //           	           std::string qtmessage = BeamSpotQReport->getMessage() ; // get the whole QT result message
+    //                }
 
    Ntracks_= 0;
 

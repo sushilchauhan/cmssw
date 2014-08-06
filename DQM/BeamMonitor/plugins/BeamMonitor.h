@@ -11,7 +11,7 @@
 #include <string>
 // CMS
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+//#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
@@ -22,6 +22,7 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/MonitorElement.h"
+#include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 #include "RecoVertex/BeamSpotProducer/interface/BSTrkParameters.h"
 #include "RecoVertex/BeamSpotProducer/interface/BeamFitter.h"
 #include <fstream>
@@ -30,7 +31,7 @@
 // class declaration
 //
 
-class BeamMonitor : public edm::EDAnalyzer {
+class BeamMonitor : public DQMEDAnalyzer {
   public:
 
     BeamMonitor( const edm::ParameterSet& );
@@ -38,11 +39,15 @@ class BeamMonitor : public edm::EDAnalyzer {
 
   protected:
 
+
     // BeginJob
     void beginJob();
 
+    // booking of histograms
+    virtual void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
+
     // BeginRun
-    void beginRun(const edm::Run& r, const edm::EventSetup& c);
+    void dqmBeginRun(const edm::Run& r, const edm::EventSetup& c);
 
     void analyze(const edm::Event& e, const edm::EventSetup& c) ;
 
@@ -108,7 +113,22 @@ class BeamMonitor : public edm::EDAnalyzer {
     int countGapLumi_;
 
     bool processed_;
-   
+
+    int    dxBin_; 
+    double dxMin_; 
+    double dxMax_; 
+    int    vxBin_; 
+    double vxMin_; 
+    double vxMax_; 
+    int    phiBin_;
+    double phiMin_;
+    double phiMax_;  
+    int    dzBin_; 
+    double dzMin_; 
+     double dzMax_; 
+  
+
+ 
     // ----------member data ---------------------------
 
     //   std::vector<BSTrkParameters> fBSvector;

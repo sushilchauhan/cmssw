@@ -20,6 +20,7 @@
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/MonitorElement.h"
+#include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 #include "RecoVertex/BeamSpotProducer/interface/BSTrkParameters.h"
 #include "RecoVertex/BeamSpotProducer/interface/BeamFitter.h"
 #include <fstream>
@@ -29,7 +30,7 @@
 // class declaration
 //
 
-class BeamSpotProblemMonitor : public edm::EDAnalyzer {
+class BeamSpotProblemMonitor : public DQMEDAnalyzer {
   public:
 
     BeamSpotProblemMonitor( const edm::ParameterSet& );
@@ -44,7 +45,9 @@ class BeamSpotProblemMonitor : public edm::EDAnalyzer {
     void beginJob();
 
     // BeginRun
-    void beginRun(const edm::Run& r, const edm::EventSetup& c);
+    //void beginRun(const edm::Run& r, const edm::EventSetup& c);
+    void dqmBeginRun(const edm::Run& r, const edm::EventSetup& c);
+    void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
     void analyze(const edm::Event& e, const edm::EventSetup& c) ;
     void beginLuminosityBlock(const edm::LuminosityBlock& lumiSeg,
         const edm::EventSetup& context) ;
