@@ -194,7 +194,7 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
         process.dqmBeamMonitor.PVFitter.VertexCollection = 'firstStepPrimaryVerticesPreSplitting'
 
         process.dqmBeamMonitor.PVFitter.errorScale = 0.95 #keep checking this with new release expected close to 1
-
+        process.initialStepChi2Est.clusterChargeCut = cms.PSet(refToPSet_ = cms.string('SiStripClusterChargeCutNone'))
         process.tracking_FirstStep  = cms.Sequence( process.siPixelDigis*
                                                      process.siStripDigis*
                                                      process.pixeltrackerlocalreco*
