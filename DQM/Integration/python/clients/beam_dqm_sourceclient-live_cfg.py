@@ -158,7 +158,10 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
 
     process.load("Configuration.StandardSequences.Reconstruction_cff")
     # Offline Beam Spot
-    process.load("RecoVertex.BeamSpotProducer.BeamSpot_cff")
+    #process.load("RecoVertex.BeamSpotProducer.BeamSpot_cff")
+    #copy onlinebeamspot as offline
+    import RecoVertex.BeamSpotProducer.BeamSpotOnline_cfi
+    offlineBeamSpot = RecoVertex.BeamSpotProducer.BeamSpotOnline_cfi.onlineBeamSpotProducer.clone()
 
     process.dqmBeamMonitor.OnlineMode = True              
     process.dqmBeamMonitor.resetEveryNLumi = 5
@@ -184,6 +187,9 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
         process.InitialStepPreSplitting.remove(process.siPixelRecHits)
         process.InitialStepPreSplitting.remove(process.MeasurementTrackerEvent)
         process.InitialStepPreSplitting.remove(process.siPixelClusterShapeCache)
+        # if z is very far due to bad fit
+        process.initialStepSeedsPreSplitting.RegionFactoryPSet.RegionPSet.originRadius = 1.5
+        process.initialStepSeedsPreSplitting.RegionFactoryPSet.RegionPSet.originHalfLength = cms.double(30.0)
 
         #Increase pT threashold at seeding stage (not so accurate)                                                                                      
         process.initialStepSeedsPreSplitting.RegionFactoryPSet.RegionPSet.ptMin = 0.9
@@ -206,9 +212,13 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
                                                      )
     else: # pixel tracking
         print "[beam_dqm_sourceclient-live_cfg]:: pixelTracking"
-        process.load("RecoVertex.PrimaryVertexProducer.OfflinePixel3DPrimaryVertices_cfi")
+        #process.load("RecoVertex.PrimaryVertexProducer.OfflinePixel3DPrimaryVertices_cfi")
         #pixel  track/vertices reco
+        from RecoTracker.TkTrackingRegions.GlobalTrackingRegion_cfi import *
+        process.RegionPSetBlock.RegionPSet.originRadius = cms.double(1.5)
+
         process.load("RecoPixelVertexing.Configuration.RecoPixelVertexing_cff")
+        process.PixelTrackReconstructionBlock.RegionFactoryPSet = cms.PSet(RegionPSetBlock, ComponentName = cms.string("GlobalTrackingRegion"))
         process.pixelVertices.TkFilterParameters.minPt = process.pixelTracks.RegionFactoryPSet.RegionPSet.ptMin
         process.offlinePrimaryVertices.TrackLabel = cms.InputTag("pixelTracks")
 
@@ -220,7 +230,8 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
         process.PixelLayerTriplets.FPix.HitProducer = cms.string('siPixelRecHitsPreSplitting')
         from RecoPixelVertexing.PixelTrackFitting.PixelTracks_cff import *
         process.pixelTracks.OrderedHitsFactoryPSet.GeneratorPSet.SeedComparitorPSet.clusterShapeCacheSrc = cms.InputTag('siPixelClusterShapeCachePreSplitting')
- 
+        process.pixelTracks.RegionFactoryPSet.RegionPSet.originRadius = 5.0
+
         process.tracking_FirstStep  = cms.Sequence(process.siPixelDigis* 
                                                    process.offlineBeamSpot*
                                                    process.siPixelClustersPreSplitting*
