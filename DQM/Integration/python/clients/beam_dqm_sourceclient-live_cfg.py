@@ -219,7 +219,7 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
         process.PixelTrackReconstructionBlock.RegionFactoryPSet = cms.PSet(RegionPSetBlock, ComponentName = cms.string("GlobalTrackingRegion"))
         process.pixelVertices.TkFilterParameters.minPt = process.pixelTracks.RegionFactoryPSet.RegionPSet.ptMin
 
-        process.dqmBeamMonitor.PVFitter.errorScale = 1.25 #keep checking this with new release expected close to 1.2
+        process.dqmBeamMonitor.PVFitter.errorScale = 1.30 #keep checking this with new release expected close to 1.2
                                                      #1.20 for 15-PU, 1.22 for 25 PU, 1.25 for 35 PU
                          
 
