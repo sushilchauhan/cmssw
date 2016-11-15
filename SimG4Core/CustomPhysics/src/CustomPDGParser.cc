@@ -158,9 +158,6 @@ double CustomPDGParser::s_spin(int pdg)
   // if the spin is important for the simulation 
   // it should be hard-coded based on PDG ID in this function.  
  int pdgAbs=abs(pdg);
- if(s_isDphoton(pdg)){                                                                                                                                
-   return 1.0;
- }
  return pdgAbs % 10;    
 }
 
