@@ -1,16 +1,16 @@
 //
-//// File name:     CMSDarkPairProductionProcess
-////
-//// Author:        Dustin Stolp (dostolp@ucdavis.edu)
-////                Sushil S. Chauhan (schauhan@cern.ch)  
-//// Creation date: 01.22.2015
-////
-//// -------------------------------------------------------------------
+// File name:     CMSDarkPairProductionProcess
+//
+// Author:        Dustin Stolp (dostolp@ucdavis.edu)
+//                Sushil S. Chauhan (schauhan@cern.ch)  
+// Creation date: 01.22.2015
+//
+// -------------------------------------------------------------------
 
 #ifndef SimG4Core_CustomPhysics_CMSDarkPairProductionProcess_h
 #define CMSDarkPairProductionProcess_h 1
 
-#include "SimG4Core/CustomPhysics/interface/CMSDarkPairProduction.hh"
+//#include "SimG4Core/CustomPhysics/interface/CMSDarkPairProduction.hh"
 #include "globals.hh"
 #include "G4VEmProcess.hh"
 #include "G4Gamma.hh"
