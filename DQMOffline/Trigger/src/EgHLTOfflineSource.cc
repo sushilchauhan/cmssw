@@ -35,10 +35,11 @@ EgHLTOfflineSource::EgHLTOfflineSource(const edm::ParameterSet& iConfig):
 
   filterInactiveTriggers_ =iConfig.getParameter<bool>("filterInactiveTriggers");
   hltTag_ = iConfig.getParameter<std::string>("hltTag");
+  dohep_ = iConfig.getParameter<bool>("doHEP");
  
   
   dirName_=iConfig.getParameter<std::string>("DQMDirName");//"HLT/EgHLTOfflineSource_" + iConfig.getParameter<std::string>("@module_label");
-
+    subdirName_=iConfig.getParameter<std::string>("subDQMDirName");
  
   offEvtHelper_.setup(iConfig,  consumesCollector());
 }
@@ -86,10 +87,10 @@ void EgHLTOfflineSource::bookHistograms(DQMStore::IBooker &iBooker, edm::Run con
   MonElemFuncs monElemFuncs(iBooker, *trigCodes);
 
   //now book ME's
-  iBooker.setCurrentFolder(dirName_+"/Source_Histos");
+  iBooker.setCurrentFolder(dirName_+"/"+subdirName_);
   //each trigger path with generate object distributions and efficiencies (BUT not trigger efficiencies...)
-  for(size_t i=0;i<eleHLTFilterNames_.size();i++){iBooker.setCurrentFolder(dirName_+"/Source_Histos/"+eleHLTFilterNames_[i]);  addEleTrigPath(monElemFuncs,eleHLTFilterNames_[i]);}
-  for(size_t i=0;i<phoHLTFilterNames_.size();i++){iBooker.setCurrentFolder(dirName_+"/Source_Histos/"+phoHLTFilterNames_[i]);  addPhoTrigPath(monElemFuncs,phoHLTFilterNames_[i]);}
+  for(size_t i=0;i<eleHLTFilterNames_.size();i++){iBooker.setCurrentFolder(dirName_+"/"+subdirName_+"/"+eleHLTFilterNames_[i]);  addEleTrigPath(monElemFuncs,eleHLTFilterNames_[i]);}
+  for(size_t i=0;i<phoHLTFilterNames_.size();i++){iBooker.setCurrentFolder(dirName_+"/"+subdirName_+"/"+phoHLTFilterNames_[i]);  addPhoTrigPath(monElemFuncs,phoHLTFilterNames_[i]);}
   //efficiencies of one trigger path relative to another
   monElemFuncs.initTightLooseTrigHists(eleMonElems_,eleTightLooseTrigNames_,binData_,"gsfEle");
   //new EgHLTDQMVarCut<OffEle>(cutMasks_.stdEle,&OffEle::cutCode)); 
@@ -114,7 +115,7 @@ void EgHLTOfflineSource::bookHistograms(DQMStore::IBooker &iBooker, edm::Run con
   //this is to do measure the trigger efficiency with respect to a fully selected offline electron
   //using a tag and probe technique (note: this will be different to the trigger efficiency normally calculated) 
   bool doTrigTagProbeEff=false;
-  if(doTrigTagProbeEff){
+  if(doTrigTagProbeEff  && (!dohep_) ){
     for(size_t i=0;i<eleHLTFilterNames_.size();i++){
       iBooker.setCurrentFolder(dirName_+"/Source_Histos/"+eleHLTFilterNames_[i]);
       monElemFuncs.initTrigTagProbeHist(eleMonElems_,eleHLTFilterNames_[i],cutMasks_.trigTPEle,binData_);
@@ -173,14 +174,14 @@ void EgHLTOfflineSource::analyze(const edm::Event& iEvent,const edm::EventSetup&
 
 void EgHLTOfflineSource::addEleTrigPath(MonElemFuncs& monElemFuncs,const std::string& name)
 {
-  EleHLTFilterMon* filterMon = new EleHLTFilterMon(monElemFuncs,name,trigCodes->getCode(name.c_str()),binData_,cutMasks_);  
+  EleHLTFilterMon* filterMon = new EleHLTFilterMon(monElemFuncs,name,trigCodes->getCode(name.c_str()),binData_,cutMasks_, dohep_);  
   eleFilterMonHists_.push_back(filterMon);
   std::sort(eleFilterMonHists_.begin(),eleFilterMonHists_.end(),EleHLTFilterMon::ptrLess<EleHLTFilterMon>()); //takes a minor efficiency hit at initalisation to ensure that the vector is always sorted
 }
 
 void EgHLTOfflineSource::addPhoTrigPath(MonElemFuncs& monElemFuncs,const std::string& name)
 {
-  PhoHLTFilterMon* filterMon = new PhoHLTFilterMon(monElemFuncs,name,trigCodes->getCode(name.c_str()),binData_,cutMasks_);
+  PhoHLTFilterMon* filterMon = new PhoHLTFilterMon(monElemFuncs,name,trigCodes->getCode(name.c_str()),binData_,cutMasks_, dohep_);
   phoFilterMonHists_.push_back(filterMon);
   std::sort(phoFilterMonHists_.begin(),phoFilterMonHists_.end(),PhoHLTFilterMon::ptrLess<PhoHLTFilterMon>()); //takes a minor efficiency hit at initalisation to ensure that the vector is always sorted
 }
