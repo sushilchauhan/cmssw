@@ -11,24 +11,32 @@
 
 using namespace egHLT ;
 
-PhoHLTFilterMon::PhoHLTFilterMon(MonElemFuncs& monElemFuncs, const std::string& filterName,TrigCodes::TrigBitSet filterBit,const BinData& bins,const CutMasks& masks):
+PhoHLTFilterMon::PhoHLTFilterMon(MonElemFuncs& monElemFuncs, const std::string& filterName,TrigCodes::TrigBitSet filterBit,const BinData& bins,const CutMasks& masks, bool doHEP):
   filterName_(filterName),
-  filterBit_(filterBit)
+  filterBit_(filterBit),
+  doHEP_(doHEP)
 {
   bool monHLTFailedPho=false;
   bool doN1andSingleEffsPho=false;
-
+   std::string histname="egamma";
+ 
   phoMonElems_.push_back(new MonElemContainer<OffPho>());
   //phoMonElems_.push_back(new MonElemContainer<OffPho>("_cut"," cut, debug hists ",new EgHLTDQMVarCut<OffPho>(~0x0,&OffPho::cutCode)));
   for(size_t i=0;i<phoMonElems_.size();i++){
-    monElemFuncs.initStdPhoHists(phoMonElems_[i]->monElems(),filterName_,filterName_+"_pho_passFilter"+phoMonElems_[i]->name(),bins);
+   if(doHEP_){
+               monElemFuncs.initStdPhoHistsHEP(phoMonElems_[i]->monElems(),filterName_,histname+"_passFilter"+phoMonElems_[i]->name(),bins);
+   }else{ 
+   monElemFuncs.initStdPhoHists(phoMonElems_[i]->monElems(),filterName_,filterName_+"_pho_passFilter"+phoMonElems_[i]->name(),bins);
+          }
   }
-  
   if(monHLTFailedPho) phoFailMonElems_.push_back(new MonElemContainer<OffPho>());
   for(size_t i=0;i<phoFailMonElems_.size();i++){
-    monElemFuncs.initStdPhoHists(phoFailMonElems_[i]->monElems(),filterName_,filterName_+"_pho_failFilter"+phoMonElems_[i]->name(),bins);
-  }
-  
+   if(doHEP_){
+       monElemFuncs.initStdPhoHistsHEP(phoFailMonElems_[i]->monElems(),filterName_,histname+"_failFilter"+phoMonElems_[i]->name(),bins);
+    }else{ 
+       monElemFuncs.initStdPhoHists(phoFailMonElems_[i]->monElems(),filterName_,filterName_+"_pho_failFilter"+phoMonElems_[i]->name(),bins);
+           }
+ } 
   phoEffHists_.push_back(new MonElemContainer<OffPho>()); 
   // phoEffHists_.push_back(new MonElemContainer<OffPho>("_jetTag"," Tag and Probe ",new EgJetB2BCut<OffPho>(-M_PI/12,M_PI/12,0.3)));
   if(doN1andSingleEffsPho){
@@ -41,6 +49,7 @@ PhoHLTFilterMon::PhoHLTFilterMon(MonElemFuncs& monElemFuncs, const std::string& 
 	 filterName_+"_pho_effVsPhi"+phoEffHists_[i]->name(),bins.phi,&OffPho::phi,masks);*/
     }
   }
+ if(!doHEP_){
   typedef MonElemManager<ParticlePair<OffPho>,float >  DiPhoMon;
   diPhoMassBothME_ = new DiPhoMon(monElemFuncs.getIB(), filterName_+"_diPho_bothPassFilter_mass",
 				  filterName_+"_diPho_bothPassFilter Mass;M_{#gamma#gamma} (GeV/c^{2})",
@@ -55,19 +64,20 @@ PhoHLTFilterMon::PhoHLTFilterMon(MonElemFuncs& monElemFuncs, const std::string& 
 				     filterName_+"_diPho_onlyOnePassFilter Mass;M_{#gamma#gamma} (GeV/c^{2})",
 				     bins.massHigh.nr,bins.massHigh.min,bins.massHigh.max,&ParticlePair<OffPho>::mass);
   
-}
+}}
   
 PhoHLTFilterMon::~PhoHLTFilterMon()
 {
   for(size_t i=0;i<phoMonElems_.size();i++) delete phoMonElems_[i];
   for(size_t i=0;i<phoFailMonElems_.size();i++) delete phoFailMonElems_[i];
   for(size_t i=0;i<phoEffHists_.size();i++) delete phoEffHists_[i];
+   if(!doHEP_){ 
   delete diPhoMassBothME_;
   delete diPhoMassOnlyOneME_; 
   delete diPhoMassBothHighME_;
   delete diPhoMassOnlyOneHighME_;
+ }
 }
-
 
 void PhoHLTFilterMon::fill(const OffEvt& evt,float weight)
 { 
@@ -88,13 +98,13 @@ void PhoHLTFilterMon::fill(const OffEvt& evt,float weight)
       for(size_t pho2Nr=pho1Nr+1;pho2Nr<evt.phos().size();pho2Nr++){
 	const OffPho& pho1 = evt.phos()[pho1Nr];
 	const OffPho& pho2 = evt.phos()[pho2Nr];
-
+        if(!doHEP_){    
 	if((pho1.trigBits()&pho2.trigBits()&filterBit_)==filterBit_) diPhoMassBothME_->fill(ParticlePair<OffPho>(pho1,pho2),weight);
 	else if((pho1.trigBits()&filterBit_)==filterBit_ || 
 		(pho2.trigBits()&filterBit_)==filterBit_){
 	  diPhoMassOnlyOneME_->fill(ParticlePair<OffPho>(pho1,pho2),weight);
 	}
-	
+	}
       }//end inner pho loop
     }//end outer pho loop
   }//end check if filter is present
