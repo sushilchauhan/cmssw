@@ -1,5 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 from DQMServices.Core.DQMEDHarvester import DQMEDHarvester
+from DQMOffline.Trigger.HEP17Monitoring_Client_cff import *
 
 metEfficiency = DQMEDHarvester("DQMGenericClient",
     subDirs        = cms.untracked.vstring("HLT/MET/*"),
@@ -58,4 +59,5 @@ exoticaClient = cms.Sequence(
     metEfficiency
     + NoBPTXEfficiency
     + photonEfficiency
+    + hep17Efficiency
 )
