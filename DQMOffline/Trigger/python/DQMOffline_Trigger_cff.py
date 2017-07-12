@@ -82,11 +82,16 @@ from DQMOffline.Trigger.BPHMonitor_cff import *
 from DQMOffline.Trigger.topHLTOfflineDQM_cff import *
 from DQMOffline.Trigger.JetMETPromptMonitor_cff import *
 
+egHLTOffDQMSource_HEP17 = egHLTOffDQMSource.clone()
+egHLTOffDQMSource_HEP17.subDQMDirName=cms.string('HEP17')
+egHLTOffDQMSource_HEP17.doHEP =cms.bool(True)
+
 offlineHLTSource = cms.Sequence(
     hltResults *
     lumiMonitorHLTsequence *
     hcalMonitoringSequence *
     egHLTOffDQMSource *
+    egHLTOffDQMSource_HEP17 *
     muonFullOfflineDQM *
     HLTTauDQMOffline *
     jetMETHLTOfflineAnalyzer * 
